@@ -8,133 +8,165 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <h1 class="logo">Vigenère Analyzer</h1>
-            <nav class="nav">
-                <ul class="nav-list">
-                    <li><a href="#analysis" class="nav-link">Analysis</a></li>
-                    <li><a href="#decryption" class="nav-link">Decryption</a></li>
-                    <li><a href="#customization" class="nav-link">Customization</a></li>
-                    <li><a href="#results" class="nav-link">Results</a></li>
-                </ul>
-            </nav>
-        </div>
+    <header>
+        <h1>Vigenère Cipher Analysis Tool</h1>
+        <nav>
+            <ul>
+                <li><a href="#encrypt-section">Encrypt</a></li>
+                <li><a href="#decrypt-section">Decrypt</a></li>
+                <li><a href="#crack-section">Crack</a></li>
+                <li><a href="#settings-section">Settings</a></li>
+            </ul>
+        </nav>
     </header>
 
-    <main class="main">
-        <section id="input-section" class="section">
-            <div class="container">
-                <div class="input-group">
-                    <label for="plaintext">Plaintext (for encryption):</label>
-                    <textarea id="plaintext" rows="4" placeholder="Enter text to encrypt..."></textarea>
-                </div>
-                <div class="input-group">
-                    <label for="ciphertext">Ciphertext (for decryption):</label>
-                    <textarea id="ciphertext" rows="4" placeholder="Enter text to decrypt..."></textarea>
-                </div>
-                <div class="input-group">
-                    <label for="key">Key (leave empty for brute force):</label>
-                    <input type="text" id="key" placeholder="Enter encryption key...">
-                </div>
-                <div class="button-group">
-                    <button id="encrypt-btn" class="btn btn-green">Encrypt</button>
-                    <button id="decrypt-btn" class="btn btn-red">Decrypt with Key</button>
-                    <button id="brute-btn" class="btn btn-red">Brute Force</button>
-                    <button id="clear-btn" class="btn btn-blue">Clear All</button>
-                </div>
+    <main>
+        <section id="alphabet-section" class="card">
+            <h2>Custom Alphabet</h2>
+            <div class="form-group">
+                <label for="custom-alphabet">Alphabet:</label>
+                <input type="text" id="custom-alphabet" value="ABCDEFGHIJKLMNOPQRSTUVWXYZ" placeholder="Enter custom alphabet">
+                <button id="reset-alphabet" class="btn-secondary">Reset</button>
+            </div>
+            <div class="info">
+                <p>Note: The alphabet must contain unique characters. Case sensitivity is preserved.</p>
             </div>
         </section>
 
-        <section id="customization" class="section">
-            <div class="container">
-                <h2>Customization</h2>
-                <div class="settings-grid">
-                    <div class="setting-group">
-                        <label for="alphabet">Custom Alphabet:</label>
-                        <input type="text" id="alphabet" value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">
-                    </div>
-                    <div class="setting-group">
-                        <label for="known-fragment">Known Plaintext Fragment:</label>
-                        <input type="text" id="known-fragment" placeholder="e.g., 'THE'">
-                    </div>
-                    <div class="setting-group">
-                        <label for="key-length">Max Key Length:</label>
-                        <input type="range" id="key-length" min="1" max="20" value="10">
-                        <span id="key-length-value">10</span>
-                    </div>
-                    <div class="setting-group">
-                        <label for="workers">Number of Workers:</label>
-                        <input type="range" id="workers" min="1" max="8" value="4">
-                        <span id="workers-value">4</span>
-                    </div>
-                    <div class="setting-group">
-                        <label for="batch-size">Key Batch Size:</label>
-                        <input type="range" id="batch-size" min="100" max="10000" step="100" value="1000">
-                        <span id="batch-size-value">1000</span>
-                    </div>
-                </div>
+        <section id="encrypt-section" class="card">
+            <h2>Encrypt Text</h2>
+            <div class="form-group">
+                <label for="plaintext">Plaintext:</label>
+                <textarea id="plaintext" rows="5" placeholder="Enter text to encrypt"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="encrypt-key">Key:</label>
+                <input type="text" id="encrypt-key" placeholder="Enter encryption key">
+            </div>
+            <button id="encrypt-btn" class="btn-primary">Encrypt</button>
+            <div class="form-group">
+                <label for="ciphertext-output">Ciphertext:</label>
+                <textarea id="ciphertext-output" rows="5" readonly></textarea>
             </div>
         </section>
 
-        <section id="progress-section" class="section" style="display: none;">
-            <div class="container">
-                <h2>Decryption Progress</h2>
+        <section id="decrypt-section" class="card">
+            <h2>Decrypt Text</h2>
+            <div class="form-group">
+                <label for="ciphertext">Ciphertext:</label>
+                <textarea id="ciphertext" rows="5" placeholder="Enter text to decrypt"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="decrypt-key">Key:</label>
+                <input type="text" id="decrypt-key" placeholder="Enter decryption key">
+            </div>
+            <button id="decrypt-btn" class="btn-primary">Decrypt</button>
+            <div class="form-group">
+                <label for="plaintext-output">Plaintext:</label>
+                <textarea id="plaintext-output" rows="5" readonly></textarea>
+            </div>
+        </section>
+
+        <section id="crack-section" class="card">
+            <h2>Crack Cipher</h2>
+            <div class="form-group">
+                <label for="ciphertext-to-crack">Ciphertext:</label>
+                <textarea id="ciphertext-to-crack" rows="5" placeholder="Enter ciphertext to crack"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="known-plaintext">Known Plaintext (optional):</label>
+                <input type="text" id="known-plaintext" placeholder="Known part of plaintext">
+            </div>
+            
+            <div class="settings-row">
+                <div class="form-group">
+                    <label for="key-length">Max Key Length:</label>
+                    <input type="range" id="key-length" min="1" max="30" value="10">
+                    <span id="key-length-value">10</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="workers-count">Workers:</label>
+                    <input type="range" id="workers-count" min="1" max="8" value="4">
+                    <span id="workers-count-value">4</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="batch-size">Batch Size:</label>
+                    <input type="range" id="batch-size" min="100" max="10000" step="100" value="1000">
+                    <span id="batch-size-value">1000</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="crack-method">Method:</label>
+                <select id="crack-method">
+                    <option value="frequency">Frequency Analysis</option>
+                    <option value="known-plaintext">Known Plaintext</option>
+                    <option value="combined">Combined Approach</option>
+                    <option value="bruteforce">Brute Force</option>
+                    <option value="random">Random Sampling</option>
+                </select>
+            </div>
+            
+            <button id="crack-btn" class="btn-primary">Start Cracking</button>
+            <button id="stop-btn" class="btn-danger" disabled>Stop</button>
+            
+            <div id="progress-section">
                 <div class="progress-container">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
-                    </div>
-                    <div class="progress-stats">
-                        <div id="progress-percent">0%</div>
-                        <div id="workers-active">Active Workers: 0</div>
-                        <div id="keys-tested">Keys Tested: 0</div>
-                        <div id="keys-per-second">Speed: 0 keys/s</div>
-                        <div id="time-remaining">Time Remaining: Calculating...</div>
-                    </div>
+                    <div id="progress-bar" class="progress-bar"></div>
                 </div>
-                <button id="cancel-btn" class="btn btn-red">Cancel Operation</button>
+                <div id="progress-stats">
+                    <p>Status: <span id="status">Ready</span></p>
+                    <p>Workers active: <span id="active-workers">0</span>/<span id="total-workers">0</span></p>
+                    <p>Keys tested: <span id="keys-tested">0</span></p>
+                    <p>Speed: <span id="keys-per-second">0</span> keys/sec</p>
+                    <p>Estimated time remaining: <span id="time-remaining">-</span></p>
+                </div>
+            </div>
+            
+            <div id="results-section">
+                <h3>Top Results</h3>
+                <div id="results-container"></div>
             </div>
         </section>
 
-        <section id="results" class="section">
-            <div class="container">
-                <h2>Results</h2>
-                <div class="results-container">
-                    <div class="result-tabs">
-                        <button class="result-tab active" data-tab="decrypted">Decrypted Text</button>
-                        <button class="result-tab" data-tab="analysis">Analysis</button>
-                        <button class="result-tab" data-tab="top-keys">Top Keys</button>
-                    </div>
-                    <div class="result-content">
-                        <div id="decrypted" class="result-pane active">
-                            <textarea id="result-text" readonly rows="8"></textarea>
-                        </div>
-                        <div id="analysis" class="result-pane">
-                            <div id="analysis-results"></div>
-                        </div>
-                        <div id="top-keys" class="result-pane">
-                            <table id="keys-table">
-                                <thead>
-                                    <tr>
-                                        <th>Rank</th>
-                                        <th>Key</th>
-                                        <th>Score</th>
-                                        <th>Decrypted Fragment</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+        <section id="settings-section" class="card">
+            <h2>Advanced Settings</h2>
+            <div class="form-group">
+                <label for="scoring-method">Scoring Method:</label>
+                <select id="scoring-method">
+                    <option value="quadgrams">Quadgram Analysis</option>
+                    <option value="trigrams">Trigram Analysis</option>
+                    <option value="ic">Index of Coincidence</option>
+                    <option value="chi2">Chi-squared</option>
+                </select>
             </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="case-sensitive" checked>
+                    Case Sensitive
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="preserve-spaces" checked>
+                    Preserve Spaces
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="preserve-punctuation" checked>
+                    Preserve Punctuation
+                </label>
+            </div>
+            <button id="reset-settings" class="btn-secondary">Reset to Defaults</button>
         </section>
     </main>
 
-    <footer class="footer">
-        <div class="container">
-            <p>Vigenère Cipher Analysis Tool &copy; 2023</p>
-        </div>
+    <footer>
+        <p>Vigenère Cipher Analysis Tool &copy; 2023</p>
     </footer>
 
     <script src="app.js"></script>
