@@ -3,127 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vigenère Cipher Breaker PRO</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <title>Vigenère Cipher Analyzer</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header class="app-header">
+    <header class="header">
         <div class="container">
-            <h1>
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="8" y1="21" x2="16" y2="21"></line>
-                    <line x1="12" y1="17" x2="12" y2="21"></line>
-                </svg>
-                Vigenère Cipher Breaker PRO
-            </h1>
-            <p class="app-subtitle">Advanced cryptanalysis with multi-method parallel processing</p>
+            <h1 class="logo">Vigenère Analyzer</h1>
+            <nav class="nav">
+                <ul class="nav-list">
+                    <li><a href="#analysis" class="nav-link">Analysis</a></li>
+                    <li><a href="#decryption" class="nav-link">Decryption</a></li>
+                    <li><a href="#customization" class="nav-link">Customization</a></li>
+                    <li><a href="#results" class="nav-link">Results</a></li>
+                </ul>
+            </nav>
         </div>
     </header>
 
-    <main class="app-main">
-        <div class="container">
-            <section class="input-section card">
-                <h2 class="section-title">Cipher Parameters</h2>
-                <div class="form-grid">
-                    <div class="form-group wide">
-                        <label for="ciphertext">Ciphertext</label>
-                        <textarea id="ciphertext" spellcheck="false">OBKRUOXOGHULBSOLIFBBWFLRVQQPRNGKSSOTWTQSJQSSEKZZWATJKLUDIAWINFBNYPVTTMZFPKWGDKZXTJCDIGKUHUAUEKCAR</textarea>
-                    </div>
+    <main class="main">
+        <section id="input-section" class="section">
+            <div class="container">
+                <div class="input-group">
+                    <label for="plaintext">Plaintext (for encryption):</label>
+                    <textarea id="plaintext" rows="4" placeholder="Enter text to encrypt..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="ciphertext">Ciphertext (for decryption):</label>
+                    <textarea id="ciphertext" rows="4" placeholder="Enter text to decrypt..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="key">Key (leave empty for brute force):</label>
+                    <input type="text" id="key" placeholder="Enter encryption key...">
+                </div>
+                <div class="button-group">
+                    <button id="encrypt-btn" class="btn btn-green">Encrypt</button>
+                    <button id="decrypt-btn" class="btn btn-red">Decrypt with Key</button>
+                    <button id="brute-btn" class="btn btn-red">Brute Force</button>
+                    <button id="clear-btn" class="btn btn-blue">Clear All</button>
+                </div>
+            </div>
+        </section>
 
-                    <div class="form-group">
-                        <label for="keyLength">Key Length</label>
-                        <input type="text" id="keyLength" value="10" placeholder="e.g. 5-15">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="language">Language</label>
-                        <select id="language">
-                            <option value="english">English</option>
-                            <option value="german">German</option>
-                            <option value="french">French</option>
-                            <option value="russian">Russian</option>
-                            <option value="custom">Custom</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="alphabet">Alphabet</label>
+        <section id="customization" class="section">
+            <div class="container">
+                <h2>Customization</h2>
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label for="alphabet">Custom Alphabet:</label>
                         <input type="text" id="alphabet" value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">
                     </div>
-                </div>
-
-                <div class="advanced-options-toggle">
-                    <button id="toggleAdvanced" class="btn-text">▼ Show Advanced Options</button>
-                </div>
-
-                <div id="advancedOptions" class="advanced-options hidden">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="keyChars">Key Characters</label>
-                            <input type="text" id="keyChars" value="[A-Z]" placeholder="Regex pattern">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="knownPrefix">Known Prefix</label>
-                            <input type="text" id="knownPrefix" placeholder="e.g. 'THE'">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="maxWorkers">Max Workers</label>
-                            <input type="range" id="maxWorkers" min="1" max="16" value="4">
-                            <span id="workersValue">4</span>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="batchSize">Batch Size</label>
-                            <input type="range" id="batchSize" min="100" max="10000" step="100" value="1000">
-                            <span id="batchValue">1000</span>
-                        </div>
+                    <div class="setting-group">
+                        <label for="known-fragment">Known Plaintext Fragment:</label>
+                        <input type="text" id="known-fragment" placeholder="e.g., 'THE'">
+                    </div>
+                    <div class="setting-group">
+                        <label for="key-length">Max Key Length:</label>
+                        <input type="range" id="key-length" min="1" max="20" value="10">
+                        <span id="key-length-value">10</span>
+                    </div>
+                    <div class="setting-group">
+                        <label for="workers">Number of Workers:</label>
+                        <input type="range" id="workers" min="1" max="8" value="4">
+                        <span id="workers-value">4</span>
+                    </div>
+                    <div class="setting-group">
+                        <label for="batch-size">Key Batch Size:</label>
+                        <input type="range" id="batch-size" min="100" max="10000" step="100" value="1000">
+                        <span id="batch-size-value">1000</span>
                     </div>
                 </div>
+            </div>
+        </section>
 
-                <div class="action-buttons">
-                    <button id="btnAnalyzeKeyLength" class="btn-secondary">Analyze Key Length</button>
-                    <button id="btnStart" class="btn-primary">Start Attack</button>
-                    <button id="btnStop" class="btn-danger" disabled>Stop</button>
-                    <button id="btnReset" class="btn-secondary">Reset</button>
-                </div>
-
-                <div id="progressContainer" class="progress-container hidden">
+        <section id="progress-section" class="section" style="display: none;">
+            <div class="container">
+                <h2>Decryption Progress</h2>
+                <div class="progress-container">
                     <div class="progress-bar">
-                        <div id="progressBar" class="progress"></div>
+                        <div class="progress-fill" id="progress-fill"></div>
                     </div>
-                    <div class="progress-info">
-                        <span id="progressText">0%</span>
-                        <span id="keysTested">0 keys</span>
-                        <span id="keysPerSecond">0 keys/sec</span>
-                        <span id="workerStatus" class="worker-status">Workers: 0 active</span>
+                    <div class="progress-stats">
+                        <div id="progress-percent">0%</div>
+                        <div id="workers-active">Active Workers: 0</div>
+                        <div id="keys-tested">Keys Tested: 0</div>
+                        <div id="keys-per-second">Speed: 0 keys/s</div>
+                        <div id="time-remaining">Time Remaining: Calculating...</div>
                     </div>
                 </div>
-            </section>
+                <button id="cancel-btn" class="btn btn-red">Cancel Operation</button>
+            </div>
+        </section>
 
-            <section class="results-section card">
-                <div class="results-header">
-                    <h2 class="section-title">Decryption Results</h2>
-                    <div class="results-controls">
-                        <label for="resultsLimit">Show Top:</label>
-                        <select id="resultsLimit">
-                            <option value="10">10</option>
-                            <option value="25" selected>25</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                        </select>
+        <section id="results" class="section">
+            <div class="container">
+                <h2>Results</h2>
+                <div class="results-container">
+                    <div class="result-tabs">
+                        <button class="result-tab active" data-tab="decrypted">Decrypted Text</button>
+                        <button class="result-tab" data-tab="analysis">Analysis</button>
+                        <button class="result-tab" data-tab="top-keys">Top Keys</button>
+                    </div>
+                    <div class="result-content">
+                        <div id="decrypted" class="result-pane active">
+                            <textarea id="result-text" readonly rows="8"></textarea>
+                        </div>
+                        <div id="analysis" class="result-pane">
+                            <div id="analysis-results"></div>
+                        </div>
+                        <div id="top-keys" class="result-pane">
+                            <table id="keys-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Key</th>
+                                        <th>Score</th>
+                                        <th>Decrypted Fragment</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-
-                <div id="resultsGrid" class="results-grid">
-                    <!-- Results will be inserted here -->
-                </div>
-            </section>
-        </div>
+            </div>
+        </section>
     </main>
 
-    <script src="js/app.js" type="module"></script>
+    <footer class="footer">
+        <div class="container">
+            <p>Vigenère Cipher Analysis Tool &copy; 2023</p>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
 </body>
 </html>
