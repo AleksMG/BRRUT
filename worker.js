@@ -182,48 +182,77 @@ function vigenereDecrypt(ciphertext, key, alphabet) {
 
 function scoreDecryptedText(text, knownFragment) {
     let score = 0;
+    const textLower = text.toLowerCase();
     
-    // Check for known fragment
-    if (knownFragment && text.includes(knownFragment)) {
-        score += 0.5; // Bonus for matching known fragment
+    // 1. Проверка известного фрагмента (с учётом позиции)
+    if(knownFragment) {
+        const fragmentLower = knownFragment.toLowerCase();
+        const pos = textLower.indexOf(fragmentLower);
+        if(pos > -1) {
+            const positionBonus = (1 - pos/text.length) * 0.3;
+            const exactMatchBonus = text.substr(pos, knownFragment.length) === knownFragment ? 0.2 : 0;
+            score += 0.5 + positionBonus + exactMatchBonus;
+        }
     }
-    
-    // Score based on letter frequencies
-    const upperText = text.toUpperCase();
+
+    // 2. Расширенный частотный анализ
+    const freqScore = calculateAdvancedFreqScore(text);
+    score += freqScore * 0.4;
+
+    // 3. Обнаружение границ слов
+    const wordBoundaryScore = calculateWordBoundaryScore(text);
+    score += wordBoundaryScore * 0.2;
+
+    // 4. Динамическое сравнение с общими словами
+    const commonWordsScore = calculateCommonWordsScore(textLower);
+    score += commonWordsScore * 0.3;
+
+    return Math.min(score, 1.0);
+}
+
+// Добавьте новые функции ПОСЛЕ scoreDecryptedText
+function calculateAdvancedFreqScore(text) {
     const charCounts = {};
-    let totalLetters = 0;
+    const total = text.length;
     
-    // Count letter frequencies
-    for (const char of upperText) {
-        if (/[A-Z]/.test(char)) {
-            charCounts[char] = (charCounts[char] || 0) + 1;
-            totalLetters++;
+    for(const c of text) {
+        charCounts[c] = (charCounts[c] || 0) + 1;
+    }
+    
+    let entropy = 0;
+    for(const c in charCounts) {
+        const p = charCounts[c]/total;
+        entropy -= p * Math.log2(p);
+    }
+    
+    return Math.min(entropy / 4, 1);
+}
+
+function calculateWordBoundaryScore(text) {
+    const wordSeparators = [' ', '.', ',', '!', '?', ';', ':'];
+    let boundaryCount = 0;
+    
+    for(let i=1; i<text.length; i++) {
+        const prev = text[i-1];
+        const curr = text[i];
+        if(wordSeparators.includes(curr) && !wordSeparators.includes(prev)) {
+            boundaryCount++;
         }
     }
     
-    // Compare to English frequencies
-    if (totalLetters > 0) {
-        let freqScore = 0;
-        for (const char in charCounts) {
-            const freq = charCounts[char] / totalLetters;
-            const expectedFreq = englishFrequencies[char] || 0;
-            freqScore += Math.min(freq, expectedFreq);
-        }
-        score += freqScore * 0.5; // Weight frequency score
-    }
+    return boundaryCount / (text.length / 10);
+}
+
+function calculateCommonWordsScore(text) {
+    const words = text.split(/[\s\.\?,!;:]+/).filter(w => w.length >= 3);
+    if(words.length === 0) return 0;
     
-    // Check for common words
-    const words = text.split(/\s+/);
-    let commonWordCount = 0;
-    
-    for (const word of words) {
-        const upperWord = word.toUpperCase().replace(/[^A-Z]/g, '');
-        if (upperWord.length >= 3 && commonWords.has(upperWord)) {
-            commonWordCount++;
+    let matches = 0;
+    for(const word of words) {
+        if(commonWords.has(word.toUpperCase())) {
+            matches++;
         }
     }
     
-    score += commonWordCount * 0.1;
-    
-    return score;
+    return matches / words.length;
 }
