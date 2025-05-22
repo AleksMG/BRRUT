@@ -19,7 +19,6 @@ class VigenereAnalyzer {
     }
 
     initElements() {
-        // Input elements
         this.plaintextEl = document.getElementById('plaintext');
         this.ciphertextEl = document.getElementById('ciphertext');
         this.keyEl = document.getElementById('key');
@@ -27,24 +26,20 @@ class VigenereAnalyzer {
         this.alphabetEl = document.getElementById('alphabet');
         this.knownFragmentEl = document.getElementById('known-fragment');
         
-        // Button elements
         this.encryptBtn = document.getElementById('encrypt-btn');
         this.decryptBtn = document.getElementById('decrypt-btn');
         this.bruteBtn = document.getElementById('brute-btn');
         this.clearBtn = document.getElementById('clear-btn');
         this.cancelBtn = document.getElementById('cancel-btn');
         
-        // Range inputs
         this.keyLengthEl = document.getElementById('key-length');
         this.workersEl = document.getElementById('workers');
         this.batchSizeEl = document.getElementById('batch-size');
         
-        // Range value displays
         this.keyLengthValueEl = document.getElementById('key-length-value');
         this.workersValueEl = document.getElementById('workers-value');
         this.batchSizeValueEl = document.getElementById('batch-size-value');
         
-        // Progress elements
         this.progressSection = document.getElementById('progress-section');
         this.progressFillEl = document.getElementById('progress-fill');
         this.progressPercentEl = document.getElementById('progress-percent');
@@ -53,7 +48,6 @@ class VigenereAnalyzer {
         this.keysPerSecondEl = document.getElementById('keys-per-second');
         this.timeRemainingEl = document.getElementById('time-remaining');
         
-        // Results elements
         this.resultTabs = document.querySelectorAll('.result-tab');
         this.resultPanes = document.querySelectorAll('.result-pane');
         this.analysisResultsEl = document.getElementById('analysis-results');
@@ -61,19 +55,16 @@ class VigenereAnalyzer {
     }
 
     initEventListeners() {
-        // Button events
         this.encryptBtn.addEventListener('click', () => this.handleEncrypt());
         this.decryptBtn.addEventListener('click', () => this.handleDecrypt());
         this.bruteBtn.addEventListener('click', () => this.handleBruteForce());
         this.clearBtn.addEventListener('click', () => this.handleClear());
         this.cancelBtn.addEventListener('click', () => this.handleCancel());
         
-        // Range input events
         this.keyLengthEl.addEventListener('input', () => this.updateRangeValues());
         this.workersEl.addEventListener('input', () => this.updateRangeValues());
         this.batchSizeEl.addEventListener('input', () => this.updateRangeValues());
         
-        // Tab events
         this.resultTabs.forEach(tab => {
             tab.addEventListener('click', () => this.switchTab(tab));
         });
@@ -86,11 +77,8 @@ class VigenereAnalyzer {
     }
 
     switchTab(clickedTab) {
-        // Remove active class from all tabs and panes
         this.resultTabs.forEach(tab => tab.classList.remove('active'));
         this.resultPanes.forEach(pane => pane.classList.remove('active'));
-        
-        // Add active class to clicked tab and corresponding pane
         clickedTab.classList.add('active');
         const paneId = clickedTab.getAttribute('data-tab');
         document.getElementById(paneId).classList.add('active');
@@ -275,7 +263,6 @@ class VigenereAnalyzer {
         this.workerCompleteCount = 0;
         this.topKeys = [];
         
-        // Calculate total possible keys
         this.possibleKeys = 0;
         for (let len = 1; len <= maxKeyLength; len++) {
             this.possibleKeys += Math.pow(alphabet.length, len);
@@ -283,11 +270,9 @@ class VigenereAnalyzer {
         
         this.keysTested = 0;
         
-        // Show progress section
         this.progressSection.style.display = 'block';
         this.updateProgress();
         
-        // Create workers
         this.workers = [];
         const keysPerWorker = Math.ceil(this.possibleKeys / workerCount);
         
@@ -350,16 +335,18 @@ class VigenereAnalyzer {
     }
 
     processKeyResult(key, score, decryptedFragment) {
-        // Add to top keys if score is high enough
-        if (this.topKeys.length < this.maxTopKeys || score > this.topKeys[this.topKeys.length - 1].score) {
-            this.topKeys.push({ key, score, decryptedFragment });
-            this.topKeys.sort((a, b) => b.score - a.score);
-            
-            if (this.topKeys.length > this.maxTopKeys) {
-                this.topKeys.pop();
-            }
-            
-            this.updateTopKeysTable();
+        this.topKeys.push({ key, score, decryptedFragment });
+        this.topKeys.sort((a, b) => b.score - a.score);
+        const minScore = Math.max(0.1, this.topKeys[0]?.score * 0.3 || 0);
+        this.topKeys = this.topKeys.filter(k => k.score >= minScore).slice(0, this.maxTopKeys);
+        this.updateTopKeysTable();
+        
+        if (this.topKeys.length > 0) {
+            const bestKey = this.topKeys[0].key;
+            const alphabet = this.alphabetEl.value.toUpperCase();
+            const ciphertext = this.ciphertextEl.value.toUpperCase();
+            const decrypted = this.vigenereDecrypt(ciphertext, bestKey, alphabet);
+            this.resultTextEl.value = decrypted;
         }
     }
 
@@ -392,7 +379,7 @@ class VigenereAnalyzer {
 
     updateProgress() {
         const now = performance.now();
-        const timeSinceLastUpdate = (now - this.lastUpdateTime) / 1000; // in seconds
+        const timeSinceLastUpdate = (now - this.lastUpdateTime) / 1000;
         
         if (timeSinceLastUpdate >= 1) {
             this.keysPerSecond = (this.totalKeysTested / timeSinceLastUpdate);
@@ -432,14 +419,9 @@ class VigenereAnalyzer {
     finishBruteForce() {
         this.isProcessing = false;
         this.currentOperation = null;
-        
-        // Terminate workers
         this.terminateWorkers();
-        
-        // Update UI
         this.progressSection.style.display = 'none';
         
-        // Show best result
         if (this.topKeys.length > 0) {
             const bestKey = this.topKeys[0].key;
             const alphabet = this.alphabetEl.value.toUpperCase();
@@ -449,11 +431,7 @@ class VigenereAnalyzer {
             this.resultTextEl.value = decryptedText;
             this.plaintextEl.value = decryptedText;
             this.keyEl.value = bestKey;
-            
-            // Show analysis
             this.generateAnalysisReport(ciphertext, decryptedText, bestKey);
-            
-            // Switch to decrypted tab
             this.switchTab(document.querySelector('[data-tab="decrypted"]'));
         } else {
             alert('No valid keys found. Try adjusting parameters.');
@@ -464,23 +442,17 @@ class VigenereAnalyzer {
         this.analysisResultsEl.innerHTML = '';
         
         const report = document.createElement('div');
-        
-        // Key information
         const keySection = document.createElement('div');
         keySection.innerHTML = `<h3>Key Information</h3>
                               <p><strong>Key:</strong> ${key}</p>
                               <p><strong>Key Length:</strong> ${key.length}</p>`;
         report.appendChild(keySection);
         
-        // Frequency analysis
         const freqSection = document.createElement('div');
-        freqSection.innerHTML = `<h3>Frequency Analysis</h3>`;
-        
-        // Add frequency charts or tables here in a real implementation
-        freqSection.innerHTML += `<p>Frequency analysis would be displayed here in a full implementation.</p>`;
+        freqSection.innerHTML = `<h3>Frequency Analysis</h3>
+                               <p>Frequency analysis would be displayed here in a full implementation.</p>`;
         report.appendChild(freqSection);
         
-        // Language detection
         const langSection = document.createElement('div');
         langSection.innerHTML = `<h3>Language Detection</h3>
                                 <p>Based on common word patterns, the decrypted text appears to be valid plaintext.</p>`;
@@ -490,14 +462,11 @@ class VigenereAnalyzer {
     }
 
     terminateWorkers() {
-        this.workers.forEach(worker => {
-            worker.terminate();
-        });
+        this.workers.forEach(worker => worker.terminate());
         this.workers = [];
     }
 }
 
-// Initialize the analyzer when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    const analyzer = new VigenereAnalyzer();
+    new VigenereAnalyzer();
 });
