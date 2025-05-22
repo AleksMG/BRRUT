@@ -1,171 +1,202 @@
-class CipherWorker {
-    constructor() {
-        this.commonWords = new Set(['THE', 'AND', 'FOR', 'ARE', 'BUT', 'NOT']);
-        this.lastUpdate = 0;
+// Import the VigenereCipher and CipherAnalyzer classes (simplified for worker)
+class VigenereCipher {
+    constructor(alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+        this.setAlphabet(alphabet);
     }
 
-    // Основной метод обработки
-    process(data) {
-        try {
-            this.initialize(data);
-            return this.bruteForce();
-        } catch (error) {
-            self.postMessage({ type: 'error', message: error.toString() });
-            return [];
+    setAlphabet(alphabet) {
+        this.alphabet = alphabet.toUpperCase();
+        this.alphabetMap = {};
+        for (let i = 0; i < this.alphabet.length; i++) {
+            this.alphabetMap[this.alphabet[i]] = i;
         }
     }
 
-    // Инициализация параметров
-    initialize({ ciphertext, alphabet, knownFragment, maxKeyLength, startIdx, endIdx }) {
-        this.ciphertext = ciphertext;
-        this.alphabet = [...alphabet];
-        this.knownFragment = knownFragment;
-        this.maxKeyLength = maxKeyLength;
-        this.startIdx = startIdx;
-        this.endIdx = endIdx;
-        this.keysProcessed = 0;
-        
-        if (this.alphabet.length < 2) {
-            throw new Error('Неверный алфавит');
-        }
-    }
-
-    // Основной цикл перебора
-    bruteForce() {
-        const results = [];
-        
-        for (let idx = this.startIdx; idx < this.endIdx; idx++) {
-            const key = this.generateKey(idx);
-            const decrypted = this.decrypt(this.ciphertext, key);
-            const score = this.calculateScore(decrypted);
-            
-            if (score > 0.5) {
-                results.push({ 
-                    key, 
-                    score,
-                    fragment: decrypted.substring(0, 50) 
-                });
-            }
-            
-            this.updateProgress();
-        }
-        
-        return results;
-    }
-
-    // Генерация ключа по индексу
-    generateKey(index) {
-        let key = '';
-        let remaining = index;
-        
-        for (let len = 1; len <= this.maxKeyLength; len++) {
-            const maxKeys = Math.pow(this.alphabet.length, len);
-            
-            if (remaining < maxKeys) {
-                for (let i = 0; i < len; i++) {
-                    const charIndex = remaining % this.alphabet.length;
-                    key = this.alphabet[charIndex] + key;
-                    remaining = Math.floor(remaining / this.alphabet.length);
-                }
-                return key;
-            }
-            remaining -= maxKeys;
-        }
-        return '';
-    }
-
-    // Дешифровка текста
-    decrypt(text, key) {
+    decrypt(ciphertext, key, preserveCase = true, preserveNonAlphabetic = true) {
         let result = '';
-        const keyLength = key.length;
-        
-        for (let i = 0; i < text.length; i++) {
-            const textChar = text[i];
-            const keyChar = key[i % keyLength];
-            
-            const textIndex = this.alphabet.indexOf(textChar);
-            const keyIndex = this.alphabet.indexOf(keyChar);
-            
-            if (textIndex === -1 || keyIndex === -1) {
-                result += textChar;
-                continue;
+        const keyUpper = key.toUpperCase();
+        let keyIndex = 0;
+
+        for (let i = 0; i < ciphertext.length; i++) {
+            const char = ciphertext[i];
+            const upperChar = char.toUpperCase();
+
+            if (this.alphabetMap[upperChar] !== undefined) {
+                const textPos = this.alphabetMap[upperChar];
+                const keyPos = this.alphabetMap[keyUpper[keyIndex % keyUpper.length]];
+                let newPos = (textPos - keyPos + this.alphabet.length) % this.alphabet.length;
+                let newChar = this.alphabet[newPos];
+                if (preserveCase && char === char.toLowerCase()) {
+                    newChar = newChar.toLowerCase();
+                }
+                result += newChar;
+                keyIndex++;
+            } else {
+                if (preserveNonAlphabetic) {
+                    result += char;
+                }
             }
-            
-            let decryptedIndex = (textIndex - keyIndex + this.alphabet.length) % this.alphabet.length;
-            result += this.alphabet[decryptedIndex];
         }
+
         return result;
-    }
-
-    // Оценка качества расшифровки
-    calculateScore(text) {
-        let score = 0;
-        
-        // Совпадение известного фрагмента
-        if (this.knownFragment) {
-            const pos = text.indexOf(this.knownFragment);
-            if (pos !== -1) {
-                score += 0.6 - (pos / text.length);
-            }
-        }
-        
-        // Частотный анализ
-        score += this.calculateFrequencyScore(text) * 0.3;
-        
-        // Поиск общих слов
-        score += this.calculateCommonWordsScore(text) * 0.2;
-        
-        return Math.min(score, 1.0);
-    }
-
-    // Расчет частотного анализа
-    calculateFrequencyScore(text) {
-        const freqMap = new Map();
-        for (const char of text) {
-            freqMap.set(char, (freqMap.get(char) || 0) + 1);
-        }
-        
-        let entropy = 0;
-        for (const [char, count] of freqMap) {
-            const p = count / text.length;
-            entropy -= p * Math.log2(p);
-        }
-        
-        return entropy / 5;
-    }
-
-    // Расчет совпадения общих слов
-    calculateCommonWordsScore(text) {
-        const words = text.toUpperCase().split(/[\s,.!?]+/);
-        const matches = words.filter(w => this.commonWords.has(w)).length;
-        return matches / words.length;
-    }
-
-    // Обновление прогресса
-    updateProgress() {
-        this.keysProcessed++;
-        
-        if (Date.now() - this.lastUpdate > 500) {
-            self.postMessage({ 
-                type: 'progress', 
-                keysProcessed: this.keysProcessed 
-            });
-            this.lastUpdate = Date.now();
-        }
     }
 }
 
-// Обработчик сообщений
-self.onmessage = (e) => {
-    const worker = new CipherWorker();
-    const results = worker.process(e.data);
+class CipherAnalyzer {
+    constructor(alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+        this.setAlphabet(alphabet);
+        this.loadQuadgrams();
+    }
+
+    setAlphabet(alphabet) {
+        this.alphabet = alphabet.toUpperCase();
+    }
+
+    loadQuadgrams() {
+        // Simplified quadgram frequencies
+        this.quadgrams = {
+            'TION': 0.0314, 'THER': 0.0267, 'NTHE': 0.0263, 'THAT': 0.0253,
+            'OFTH': 0.0246, 'FTHE': 0.0244, 'THES': 0.0234, 'WITH': 0.0232,
+            'INTH': 0.0213, 'ATIO': 0.0208, 'OTHE': 0.0206, 'TTHA': 0.0198,
+            'NDTH': 0.0196, 'ETHE': 0.0194, 'TOTH': 0.0189, 'DTHE': 0.0187,
+            'INGT': 0.0185, 'INGA': 0.0183, 'OFTH': 0.0181, 'REQU': 0.0179
+        };
+    }
+
+    scoreText(text, method = 'quadgrams') {
+        text = text.toUpperCase().replace(/[^A-Z]/g, '');
+        if (text.length < 4) return -Infinity;
+
+        let score = 0;
+        const n = text.length;
+
+        if (method === 'quadgrams') {
+            for (let i = 0; i < n - 3; i++) {
+                const quadgram = text.substr(i, 4);
+                score += Math.log10(this.quadgrams[quadgram] || 1e-10);
+            }
+            return score;
+        } else if (method === 'ic') {
+            return this.indexOfCoincidence(text);
+        } else if (method === 'chi2') {
+            return this.chiSquared(text);
+        }
+
+        return score;
+    }
+
+    indexOfCoincidence(text) {
+        const freq = {};
+        let count = 0;
+        
+        for (const char of text) {
+            freq[char] = (freq[char] || 0) + 1;
+            count++;
+        }
+        
+        if (count < 2) return 0;
+        
+        let sum = 0;
+        for (const char in freq) {
+            sum += freq[char] * (freq[char] - 1);
+        }
+        
+        return sum / (count * (count - 1));
+    }
+
+    chiSquared(text) {
+        const englishFreq = {
+            'A': 8.167, 'B': 1.492, 'C': 2.782, 'D': 4.253, 'E': 12.702,
+            'F': 2.228, 'G': 2.015, 'H': 6.094, 'I': 6.966, 'J': 0.153,
+            'K': 0.772, 'L': 4.025, 'M': 2.406, 'N': 6.749, 'O': 7.507,
+            'P': 1.929, 'Q': 0.095, 'R': 5.987, 'S': 6.327, 'T': 9.056,
+            'U': 2.758, 'V': 0.978, 'W': 2.360, 'X': 0.150, 'Y': 1.974, 'Z': 0.074
+        };
+        
+        const freq = {};
+        let count = 0;
+        
+        for (const char of text.toUpperCase()) {
+            if (englishFreq[char]) {
+                freq[char] = (freq[char] || 0) + 1;
+                count++;
+            }
+        }
+        
+        if (count === 0) return Infinity;
+        
+        let chi2 = 0;
+        for (const char in englishFreq) {
+            const expected = englishFreq[char] / 100 * count;
+            const observed = freq[char] || 0;
+            chi2 += Math.pow(observed - expected, 2) / expected;
+        }
+        
+        return chi2;
+    }
+
+    matchesKnownPlaintext(decrypted, known) {
+        if (!known) return true;
+        return decrypted.toUpperCase().includes(known.toUpperCase());
+    }
+}
+
+// Worker message handler
+self.onmessage = function(event) {
+    const { type } = event.data;
     
-    results.forEach(result => {
+    if (type === 'start') {
+        const {
+            ciphertext,
+            keyBatches,
+            alphabet,
+            method,
+            knownPlaintext,
+            scoringMethod
+        } = event.data;
+
+        const cipher = new VigenereCipher(alphabet);
+        const analyzer = new CipherAnalyzer(alphabet);
+        const results = [];
+        let keysTested = 0;
+
+        for (const batch of keyBatches) {
+            for (const key of batch) {
+                try {
+                    const decrypted = cipher.decrypt(ciphertext, key, true, true);
+                    
+                    // Skip if known plaintext doesn't match
+                    if (!analyzer.matchesKnownPlaintext(decrypted, knownPlaintext)) {
+                        keysTested++;
+                        continue;
+                    }
+                    
+                    const score = analyzer.scoreText(decrypted, scoringMethod);
+                    
+                    if (score > -Infinity) {
+                        results.push({
+                            key,
+                            plaintext: decrypted,
+                            score
+                        });
+                    }
+                    
+                    keysTested++;
+                } catch (error) {
+                    console.error(`Error processing key ${key}:`, error);
+                }
+            }
+
+            // Send intermediate results
+            self.postMessage({
+                keysTested,
+                results
+            });
+        }
+
+        // Signal completion
         self.postMessage({
-            type: 'result',
-            key: result.key,
-            score: result.score,
-            fragment: result.fragment
+            type: 'done'
         });
-    });
+    }
 };
