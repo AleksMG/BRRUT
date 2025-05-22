@@ -8,7 +8,6 @@ class VigenereCipher {
             throw new Error('Alphabet must be a non-empty string');
         }
 
-        // Check for duplicate characters
         const uniqueChars = new Set(alphabet.toUpperCase());
         if (uniqueChars.size !== alphabet.length) {
             throw new Error('Alphabet must contain unique characters');
@@ -101,12 +100,10 @@ class CipherAnalyzer {
     }
 
     setAlphabet(alphabet) {
-        this.cipher = new VigenereCipher(alphabet);
+        this.alphabet = alphabet.toUpperCase();
     }
 
     loadQuadgrams() {
-        // English quadgram frequencies (simplified for this example)
-        // In a real application, this would be loaded from a more comprehensive dataset
         this.quadgrams = {
             'TION': 0.0314, 'THER': 0.0267, 'NTHE': 0.0263, 'THAT': 0.0253,
             'OFTH': 0.0246, 'FTHE': 0.0244, 'THES': 0.0234, 'WITH': 0.0232,
@@ -158,7 +155,6 @@ class CipherAnalyzer {
     }
 
     chiSquared(text) {
-        // English letter frequencies (percentages)
         const englishFreq = {
             'A': 8.167, 'B': 1.492, 'C': 2.782, 'D': 4.253, 'E': 12.702,
             'F': 2.228, 'G': 2.015, 'H': 6.094, 'I': 6.966, 'J': 0.153,
@@ -203,7 +199,6 @@ class CipherAnalyzer {
             }
         }
         
-        // Filter sequences that appear at least twice
         const repeating = {};
         for (const seq in sequences) {
             if (sequences[seq].length >= 2) {
@@ -220,7 +215,6 @@ class CipherAnalyzer {
             return null;
         }
         
-        // Calculate distances between repeating sequences
         const distances = [];
         for (const seq in sequences) {
             const positions = sequences[seq];
@@ -233,7 +227,6 @@ class CipherAnalyzer {
             return null;
         }
         
-        // Find the most likely key length by finding common factors
         const factorCounts = {};
         for (const distance of distances) {
             const factors = this.getFactors(distance, maxLength);
@@ -242,7 +235,6 @@ class CipherAnalyzer {
             }
         }
         
-        // Find the factor with the highest count
         let bestLength = null;
         let highestCount = 0;
         for (const length in factorCounts) {
@@ -278,6 +270,7 @@ class Cracker {
         this.startTime = null;
         this.lastUpdateTime = null;
         this.keysPerSecond = 0;
+        this.totalKeysToTest = 0;
     }
 
     async crack(ciphertext, options = {}) {
@@ -300,23 +293,56 @@ class Cracker {
             scoringMethod = 'quadgrams'
         } = options;
 
-        // Estimate key length if not specified
-        const estimatedLength = this.analyzer.estimateKeyLength(ciphertext, maxKeyLength);
-        const keyLengthsToTry = estimatedLength ? 
-            [estimatedLength] : 
-            Array.from({length: maxKeyLength}, (_, i) => i + 1);
+        this.totalKeysToTest = this.calculateTotalKeys(maxKeyLength);
+        const keyBatches = this.generateKeyBatches(maxKeyLength, batchSize);
 
-        // Generate key batches
-        const keyBatches = [];
-        for (const length of keyLengthsToTry) {
-            const keys = this.cipher.generateAllPossibleKeys(length);
+        await this.setupWorkers(
+            ciphertext,
+            keyBatches,
+            workersCount,
+            method,
+            knownPlaintext,
+            scoringMethod
+        );
+
+        this.isRunning = false;
+        return this.getTopResults();
+    }
+
+    calculateTotalKeys(maxLength) {
+        let total = 0;
+        const alphabetSize = this.alphabet.length;
+        for (let length = 1; length <= maxLength; length++) {
+            total += Math.pow(alphabetSize, length);
+        }
+        return total;
+    }
+
+    generateKeyBatches(maxLength, batchSize) {
+        const batches = [];
+        for (let length = 1; length <= maxLength; length++) {
+            const keys = [];
+            this.generateKeysOfLength('', length, keys);
+            
             for (let i = 0; i < keys.length; i += batchSize) {
-                keyBatches.push(keys.slice(i, i + batchSize));
+                batches.push(keys.slice(i, i + batchSize));
             }
         }
+        return batches;
+    }
 
-        // Create workers
-        this.workers = [];
+    generateKeysOfLength(current, length, keys) {
+        if (current.length === length) {
+            keys.push(current);
+            return;
+        }
+
+        for (const char of this.alphabet) {
+            this.generateKeysOfLength(current + char, length, keys);
+        }
+    }
+
+    async setupWorkers(ciphertext, keyBatches, workersCount, method, knownPlaintext, scoringMethod) {
         const workerPromises = [];
         const batchesPerWorker = Math.ceil(keyBatches.length / workersCount);
 
@@ -329,11 +355,10 @@ class Cracker {
             this.workers.push(worker);
 
             worker.onmessage = (event) => {
-                const { keysTested, results } = event.data;
-                this.keysTested += keysTested;
-                this.results.push(...results);
-                this.updateSpeed();
-                this.updateUI();
+                if (event.data.type === 'done') {
+                    return;
+                }
+                this.handleWorkerMessage(event.data);
             };
 
             worker.postMessage({
@@ -347,63 +372,57 @@ class Cracker {
             });
 
             workerPromises.push(new Promise((resolve) => {
-                worker.onmessage = (event) => {
-                    if (event.data.type === 'done') {
+                worker.addEventListener('message', (e) => {
+                    if (e.data.type === 'done') {
                         resolve();
                     }
-                };
+                });
+                worker.addEventListener('error', (e) => {
+                    console.error('Worker error:', e);
+                    resolve();
+                });
             }));
         }
 
-        // Wait for all workers to finish
         await Promise.all(workerPromises);
-
-        this.isRunning = false;
-        this.updateUI();
-        return this.getTopResults();
+        this.cleanupWorkers();
     }
 
-    stop() {
-        if (!this.isRunning) return;
+    handleWorkerMessage(data) {
+        this.keysTested += data.keysTested;
+        this.results.push(...data.results);
+        this.updateSpeed();
+    }
 
-        this.isRunning = false;
-        for (const worker of this.workers) {
-            worker.terminate();
-        }
+    cleanupWorkers() {
+        this.workers.forEach(worker => {
+            try {
+                worker.terminate();
+            } catch (e) {
+                console.error('Error terminating worker:', e);
+            }
+        });
         this.workers = [];
     }
 
     updateSpeed() {
         const now = performance.now();
-        const timeElapsed = (now - this.lastUpdateTime) / 1000; // in seconds
+        const timeElapsed = (now - this.lastUpdateTime) / 1000;
         if (timeElapsed > 0) {
             this.keysPerSecond = Math.round(this.keysTested / timeElapsed);
         }
         this.lastUpdateTime = now;
     }
 
-    updateUI() {
-        // This would be implemented to update the DOM
-        // In a real app, you'd have references to DOM elements
-        console.log(`Keys tested: ${this.keysTested}, Speed: ${this.keysPerSecond} keys/sec`);
-    }
-
-    getTopResults(count = 10) {
-        return this.results
-            .sort((a, b) => b.score - a.score)
-            .slice(0, count);
-    }
-
     getProgress() {
-        if (!this.startTime) return 0;
-        // This would be more sophisticated in a real implementation
-        return Math.min(this.keysTested / 100000, 1); // Simplified for example
+        if (!this.startTime || this.totalKeysToTest === 0) return 0;
+        return Math.min(this.keysTested / this.totalKeysToTest, 1);
     }
 
     getTimeRemaining() {
         if (!this.startTime || this.keysPerSecond === 0) return '-';
 
-        const keysRemaining = 100000 - this.keysTested; // Simplified for example
+        const keysRemaining = this.totalKeysToTest - this.keysTested;
         const secondsRemaining = keysRemaining / this.keysPerSecond;
 
         if (secondsRemaining > 3600) {
@@ -414,17 +433,27 @@ class Cracker {
             return `${Math.round(secondsRemaining)} seconds`;
         }
     }
+
+    getTopResults(count = 10) {
+        return this.results
+            .sort((a, b) => b.score - a.score)
+            .slice(0, count);
+    }
+
+    stop() {
+        if (!this.isRunning) return;
+
+        this.isRunning = false;
+        this.cleanupWorkers();
+    }
 }
 
-// DOM Interaction Code
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize cipher with default alphabet
     const defaultAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const cipher = new VigenereCipher(defaultAlphabet);
     const analyzer = new CipherAnalyzer(defaultAlphabet);
-    const cracker = new Cracker(defaultAlphabet);
+    let cracker = new Cracker(defaultAlphabet);
 
-    // DOM Elements
     const elements = {
         customAlphabet: document.getElementById('custom-alphabet'),
         resetAlphabet: document.getElementById('reset-alphabet'),
@@ -462,7 +491,6 @@ document.addEventListener('DOMContentLoaded', () => {
         resetSettings: document.getElementById('reset-settings')
     };
 
-    // Event Listeners
     elements.resetAlphabet.addEventListener('click', () => {
         elements.customAlphabet.value = defaultAlphabet;
         updateAlphabet();
@@ -488,18 +516,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     elements.customAlphabet.addEventListener('change', updateAlphabet);
 
-    // Initialize UI
-    elements.keyLengthValue.textContent = elements.keyLength.value;
-    elements.workersCountValue.textContent = elements.workersCount.value;
-    elements.batchSizeValue.textContent = elements.batchSize.value;
-
-    // Functions
     function updateAlphabet() {
         try {
             const newAlphabet = elements.customAlphabet.value.toUpperCase();
             cipher.setAlphabet(newAlphabet);
             analyzer.setAlphabet(newAlphabet);
-            cracker.alphabet = newAlphabet;
+            cracker = new Cracker(newAlphabet);
             showMessage('Alphabet updated successfully', 'success');
         } catch (error) {
             showMessage(`Error: ${error.message}`, 'error');
@@ -551,7 +573,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Ciphertext is required');
             }
 
-            // Update UI for cracking in progress
             elements.crackBtn.disabled = true;
             elements.stopBtn.disabled = false;
             elements.status.textContent = 'Running';
@@ -572,13 +593,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 scoringMethod: elements.scoringMethod.value
             };
 
-            // Start cracking
             await cracker.crack(ciphertext, options);
 
-            // Display results
-            const results = cracker.getTopResults(10);
-            displayResults(results);
-
+            displayResults(cracker.getTopResults(10));
             showMessage('Cracking completed', 'success');
         } catch (error) {
             showMessage(`Error: ${error.message}`, 'error');
@@ -626,11 +643,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showMessage(message, type) {
-        // In a real app, you'd show this in a dedicated message area
         console.log(`${type}: ${message}`);
     }
 
-    // Update progress periodically
     setInterval(() => {
         if (cracker.isRunning) {
             const progress = cracker.getProgress() * 100;
