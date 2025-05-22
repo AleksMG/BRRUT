@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vigenère Cipher Breaker PRO</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="container">
+            <h1>
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                Vigenère Cipher Breaker PRO
+            </h1>
+            <p class="app-subtitle">Advanced cryptanalysis with multi-method parallel processing</p>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <div class="container">
+            <section class="input-section card">
+                <h2 class="section-title">Cipher Parameters</h2>
+                <div class="form-grid">
+                    <div class="form-group wide">
+                        <label for="ciphertext">Ciphertext</label>
+                        <textarea id="ciphertext" spellcheck="false">OBKRUOXOGHULBSOLIFBBWFLRVQQPRNGKSSOTWTQSJQSSEKZZWATJKLUDIAWINFBNYPVTTMZFPKWGDKZXTJCDIGKUHUAUEKCAR</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="keyLength">Key Length</label>
+                        <input type="text" id="keyLength" value="10" placeholder="e.g. 5-15">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="language">Language</label>
+                        <select id="language">
+                            <option value="english">English</option>
+                            <option value="german">German</option>
+                            <option value="french">French</option>
+                            <option value="russian">Russian</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="alphabet">Alphabet</label>
+                        <input type="text" id="alphabet" value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">
+                    </div>
+                </div>
+
+                <div class="advanced-options-toggle">
+                    <button id="toggleAdvanced" class="btn-text">▼ Show Advanced Options</button>
+                </div>
+
+                <div id="advancedOptions" class="advanced-options hidden">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="keyChars">Key Characters</label>
+                            <input type="text" id="keyChars" value="[A-Z]" placeholder="Regex pattern">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="knownPrefix">Known Prefix</label>
+                            <input type="text" id="knownPrefix" placeholder="e.g. 'THE'">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="maxWorkers">Max Workers</label>
+                            <input type="range" id="maxWorkers" min="1" max="16" value="4">
+                            <span id="workersValue">4</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="batchSize">Batch Size</label>
+                            <input type="range" id="batchSize" min="100" max="10000" step="100" value="1000">
+                            <span id="batchValue">1000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="btnAnalyzeKeyLength" class="btn-secondary">Analyze Key Length</button>
+                    <button id="btnStart" class="btn-primary">Start Attack</button>
+                    <button id="btnStop" class="btn-danger" disabled>Stop</button>
+                    <button id="btnReset" class="btn-secondary">Reset</button>
+                </div>
+
+                <div id="progressContainer" class="progress-container hidden">
+                    <div class="progress-bar">
+                        <div id="progressBar" class="progress"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="progressText">0%</span>
+                        <span id="keysTested">0 keys</span>
+                        <span id="keysPerSecond">0 keys/sec</span>
+                        <span id="workerStatus" class="worker-status">Workers: 0 active</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="results-section card">
+                <div class="results-header">
+                    <h2 class="section-title">Decryption Results</h2>
+                    <div class="results-controls">
+                        <label for="resultsLimit">Show Top:</label>
+                        <select id="resultsLimit">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="resultsGrid" class="results-grid">
+                    <!-- Results will be inserted here -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="js/app.js" type="module"></script>
+</body>
+</html>
