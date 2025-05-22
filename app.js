@@ -1,400 +1,178 @@
-class VigenereCipher {
+class VigenereCracker {
     constructor(alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
-        this.setAlphabet(alphabet);
-    }
-
-    setAlphabet(alphabet) {
-        if (typeof alphabet !== 'string' || alphabet.length === 0) {
-            throw new Error('Alphabet must be a non-empty string');
-        }
-
-        const uniqueChars = new Set(alphabet.toUpperCase());
-        if (uniqueChars.size !== alphabet.length) {
-            throw new Error('Alphabet must contain unique characters');
-        }
-
-        this.alphabet = alphabet.toUpperCase();
-        this.alphabetMap = {};
-        for (let i = 0; i < this.alphabet.length; i++) {
-            this.alphabetMap[this.alphabet[i]] = i;
-        }
-    }
-
-    encrypt(plaintext, key, preserveCase = true, preserveNonAlphabetic = true) {
-        return this._processText(plaintext, key, true, preserveCase, preserveNonAlphabetic);
-    }
-
-    decrypt(ciphertext, key, preserveCase = true, preserveNonAlphabetic = true) {
-        return this._processText(ciphertext, key, false, preserveCase, preserveNonAlphabetic);
-    }
-
-    _processText(text, key, encrypt, preserveCase, preserveNonAlphabetic) {
-        if (typeof text !== 'string' || typeof key !== 'string') {
-            throw new Error('Text and key must be strings');
-        }
-
-        if (key.length === 0) {
-            throw new Error('Key cannot be empty');
-        }
-
-        let result = '';
-        const keyUpper = key.toUpperCase();
-        let keyIndex = 0;
-
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i];
-            const upperChar = char.toUpperCase();
-
-            if (this.alphabetMap[upperChar] !== undefined) {
-                const textPos = this.alphabetMap[upperChar];
-                const keyPos = this.alphabetMap[keyUpper[keyIndex % keyUpper.length]];
-                
-                let newPos;
-                if (encrypt) {
-                    newPos = (textPos + keyPos) % this.alphabet.length;
-                } else {
-                    newPos = (textPos - keyPos + this.alphabet.length) % this.alphabet.length;
-                }
-
-                let newChar = this.alphabet[newPos];
-                if (preserveCase && char === char.toLowerCase()) {
-                    newChar = newChar.toLowerCase();
-                }
-
-                result += newChar;
-                keyIndex++;
-            } else {
-                if (preserveNonAlphabetic) {
-                    result += char;
-                }
-            }
-        }
-
-        return result;
-    }
-
-    generateAllPossibleKeys(maxLength) {
-        const keys = [];
-        for (let length = 1; length <= maxLength; length++) {
-            this._generateKeysOfLength('', length, keys);
-        }
-        return keys;
-    }
-
-    _generateKeysOfLength(current, length, keys) {
-        if (current.length === length) {
-            keys.push(current);
-            return;
-        }
-
-        for (const char of this.alphabet) {
-            this._generateKeysOfLength(current + char, length, keys);
-        }
-    }
-}
-
-class CipherAnalyzer {
-    constructor(alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
-        this.setAlphabet(alphabet);
-        this.loadQuadgrams();
-    }
-
-    setAlphabet(alphabet) {
-        this.alphabet = alphabet.toUpperCase();
-    }
-
-    loadQuadgrams() {
-        this.quadgrams = {
-            'TION': 0.0314, 'THER': 0.0267, 'NTHE': 0.0263, 'THAT': 0.0253,
-            'OFTH': 0.0246, 'FTHE': 0.0244, 'THES': 0.0234, 'WITH': 0.0232,
-            'INTH': 0.0213, 'ATIO': 0.0208, 'OTHE': 0.0206, 'TTHA': 0.0198,
-            'NDTH': 0.0196, 'ETHE': 0.0194, 'TOTH': 0.0189, 'DTHE': 0.0187,
-            'INGT': 0.0185, 'INGA': 0.0183, 'OFTH': 0.0181, 'REQU': 0.0179
-        };
-    }
-
-    scoreText(text, method = 'quadgrams') {
-        text = text.toUpperCase().replace(/[^A-Z]/g, '');
-        if (text.length < 4) return -Infinity;
-
-        let score = 0;
-        const n = text.length;
-
-        if (method === 'quadgrams') {
-            for (let i = 0; i < n - 3; i++) {
-                const quadgram = text.substr(i, 4);
-                score += Math.log10(this.quadgrams[quadgram] || 1e-10);
-            }
-            return score;
-        } else if (method === 'ic') {
-            return this.indexOfCoincidence(text);
-        } else if (method === 'chi2') {
-            return this.chiSquared(text);
-        }
-
-        return score;
-    }
-
-    indexOfCoincidence(text) {
-        const freq = {};
-        let count = 0;
-        
-        for (const char of text) {
-            freq[char] = (freq[char] || 0) + 1;
-            count++;
-        }
-        
-        if (count < 2) return 0;
-        
-        let sum = 0;
-        for (const char in freq) {
-            sum += freq[char] * (freq[char] - 1);
-        }
-        
-        return sum / (count * (count - 1));
-    }
-
-    chiSquared(text) {
-        const englishFreq = {
-            'A': 8.167, 'B': 1.492, 'C': 2.782, 'D': 4.253, 'E': 12.702,
-            'F': 2.228, 'G': 2.015, 'H': 6.094, 'I': 6.966, 'J': 0.153,
-            'K': 0.772, 'L': 4.025, 'M': 2.406, 'N': 6.749, 'O': 7.507,
-            'P': 1.929, 'Q': 0.095, 'R': 5.987, 'S': 6.327, 'T': 9.056,
-            'U': 2.758, 'V': 0.978, 'W': 2.360, 'X': 0.150, 'Y': 1.974, 'Z': 0.074
-        };
-        
-        const freq = {};
-        let count = 0;
-        
-        for (const char of text.toUpperCase()) {
-            if (englishFreq[char]) {
-                freq[char] = (freq[char] || 0) + 1;
-                count++;
-            }
-        }
-        
-        if (count === 0) return Infinity;
-        
-        let chi2 = 0;
-        for (const char in englishFreq) {
-            const expected = englishFreq[char] / 100 * count;
-            const observed = freq[char] || 0;
-            chi2 += Math.pow(observed - expected, 2) / expected;
-        }
-        
-        return chi2;
-    }
-
-    findRepeatingSequences(text, minLength = 3) {
-        const sequences = {};
-        
-        for (let length = minLength; length <= Math.floor(text.length / 2); length++) {
-            for (let i = 0; i <= text.length - length; i++) {
-                const seq = text.substr(i, length);
-                if (seq in sequences) {
-                    sequences[seq].push(i);
-                } else {
-                    sequences[seq] = [i];
-                }
-            }
-        }
-        
-        const repeating = {};
-        for (const seq in sequences) {
-            if (sequences[seq].length >= 2) {
-                repeating[seq] = sequences[seq];
-            }
-        }
-        
-        return repeating;
-    }
-
-    estimateKeyLength(ciphertext, maxLength = 20) {
-        const sequences = this.findRepeatingSequences(ciphertext);
-        if (Object.keys(sequences).length === 0) {
-            return null;
-        }
-        
-        const distances = [];
-        for (const seq in sequences) {
-            const positions = sequences[seq];
-            for (let i = 1; i < positions.length; i++) {
-                distances.push(positions[i] - positions[i - 1]);
-            }
-        }
-        
-        if (distances.length === 0) {
-            return null;
-        }
-        
-        const factorCounts = {};
-        for (const distance of distances) {
-            const factors = this.getFactors(distance, maxLength);
-            for (const factor of factors) {
-                factorCounts[factor] = (factorCounts[factor] || 0) + 1;
-            }
-        }
-        
-        let bestLength = null;
-        let highestCount = 0;
-        for (const length in factorCounts) {
-            if (factorCounts[length] > highestCount) {
-                highestCount = factorCounts[length];
-                bestLength = parseInt(length);
-            }
-        }
-        
-        return bestLength;
-    }
-
-    getFactors(n, max) {
-        const factors = new Set();
-        for (let i = 1; i <= Math.min(n, max); i++) {
-            if (n % i === 0) {
-                factors.add(i);
-            }
-        }
-        return Array.from(factors);
-    }
-}
-
-class Cracker {
-    constructor(alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
-        this.analyzer = new CipherAnalyzer(alphabet);
-        this.cipher = new VigenereCipher(alphabet);
         this.alphabet = alphabet;
         this.workers = [];
         this.isRunning = false;
-        this.results = [];
-        this.keysTested = 0;
+        this.currentTask = null;
         this.startTime = null;
-        this.lastUpdateTime = null;
-        this.keysPerSecond = 0;
-        this.totalKeysToTest = 0;
+        this.keysTested = 0;
+        this.totalKeys = 0;
     }
 
-    async crack(ciphertext, options = {}) {
+    async initializeWorkers(count) {
+        this.terminateWorkers();
+        
+        this.workers = Array.from({ length: count }, () => {
+            const worker = new Worker('worker.js');
+            worker.onerror = (e) => this.handleWorkerError(e);
+            return worker;
+        });
+
+        await Promise.all(
+            this.workers.map(worker => 
+                new Promise(resolve => {
+                    const handler = (e) => {
+                        if (e.data.type === 'READY') {
+                            worker.removeEventListener('message', handler);
+                            resolve();
+                        }
+                    };
+                    worker.addEventListener('message', handler);
+                    worker.postMessage({ 
+                        type: 'INIT',
+                        alphabet: this.alphabet
+                    });
+                })
+            )
+        );
+    }
+
+    async crack(ciphertext, options) {
         if (this.isRunning) {
             throw new Error('Cracking already in progress');
         }
 
         this.isRunning = true;
-        this.results = [];
-        this.keysTested = 0;
         this.startTime = performance.now();
-        this.lastUpdateTime = this.startTime;
-
-        const {
-            maxKeyLength = 10,
-            workersCount = 4,
-            batchSize = 1000,
-            method = 'frequency',
-            knownPlaintext = '',
-            scoringMethod = 'quadgrams'
-        } = options;
-
-        this.totalKeysToTest = this.calculateTotalKeys(maxKeyLength);
-        const keyBatches = this.generateKeyBatches(maxKeyLength, batchSize);
-
-        await this.setupWorkers(
+        this.keysTested = 0;
+        this.currentTask = {
             ciphertext,
-            keyBatches,
-            workersCount,
-            method,
-            knownPlaintext,
-            scoringMethod
-        );
+            options,
+            results: []
+        };
 
-        this.isRunning = false;
-        return this.getTopResults();
-    }
-
-    calculateTotalKeys(maxLength) {
-        let total = 0;
-        const alphabetSize = this.alphabet.length;
-        for (let length = 1; length <= maxLength; length++) {
-            total += Math.pow(alphabetSize, length);
+        try {
+            await this.initializeWorkers(options.workersCount);
+            
+            const keyBatches = this.generateKeyBatches(
+                options.maxKeyLength,
+                options.batchSize
+            );
+            
+            this.totalKeys = keyBatches.reduce((sum, batch) => sum + batch.length, 0);
+            
+            const results = await this.processBatches(keyBatches);
+            return this.sortResults(results);
+        } finally {
+            this.terminateWorkers();
+            this.isRunning = false;
         }
-        return total;
     }
 
     generateKeyBatches(maxLength, batchSize) {
         const batches = [];
+        const alphabetSize = this.alphabet.length;
+        
         for (let length = 1; length <= maxLength; length++) {
-            const keys = [];
-            this.generateKeysOfLength('', length, keys);
-            
-            for (let i = 0; i < keys.length; i += batchSize) {
-                batches.push(keys.slice(i, i + batchSize));
+            const totalKeys = Math.pow(alphabetSize, length);
+            for (let i = 0; i < totalKeys; i += batchSize) {
+                batches.push(this.generateKeys(i, Math.min(batchSize, totalKeys - i), length));
             }
         }
+        
         return batches;
     }
 
-    generateKeysOfLength(current, length, keys) {
-        if (current.length === length) {
-            keys.push(current);
-            return;
+    generateKeys(offset, count, length) {
+        const keys = [];
+        const alphabetSize = this.alphabet.length;
+        
+        for (let i = 0; i < count; i++) {
+            let key = '';
+            let num = offset + i;
+            
+            for (let j = 0; j < length; j++) {
+                const index = num % alphabetSize;
+                key = this.alphabet[index] + key;
+                num = Math.floor(num / alphabetSize);
+            }
+            
+            keys.push(key);
         }
-
-        for (const char of this.alphabet) {
-            this.generateKeysOfLength(current + char, length, keys);
-        }
+        
+        return keys;
     }
 
-    async setupWorkers(ciphertext, keyBatches, workersCount, method, knownPlaintext, scoringMethod) {
-        const workerPromises = [];
-        const batchesPerWorker = Math.ceil(keyBatches.length / workersCount);
-
-        for (let i = 0; i < workersCount; i++) {
-            const start = i * batchesPerWorker;
-            const end = Math.min(start + batchesPerWorker, keyBatches.length);
-            if (start >= end) continue;
-
-            const worker = new Worker('worker.js');
-            this.workers.push(worker);
-
-            worker.onmessage = (event) => {
-                if (event.data.type === 'done') {
-                    return;
-                }
-                this.handleWorkerMessage(event.data);
-            };
-
-            worker.postMessage({
-                type: 'start',
-                ciphertext,
-                keyBatches: keyBatches.slice(start, end),
-                alphabet: this.alphabet,
-                method,
-                knownPlaintext,
-                scoringMethod
+    async processBatches(batches) {
+        return new Promise((resolve, reject) => {
+            this.currentTask.resolve = resolve;
+            this.currentTask.reject = reject;
+            this.currentTask.pendingBatches = batches.length;
+            this.currentTask.results = [];
+            
+            batches.forEach((batch, i) => {
+                const worker = this.workers[i % this.workers.length];
+                
+                worker.onmessage = (e) => this.handleWorkerMessage(e);
+                
+                worker.postMessage({
+                    type: 'PROCESS',
+                    batch,
+                    ciphertext: this.currentTask.ciphertext,
+                    knownPlaintext: this.currentTask.options.knownPlaintext,
+                    scoringMethod: this.currentTask.options.scoringMethod
+                });
             });
+        });
+    }
 
-            workerPromises.push(new Promise((resolve) => {
-                worker.addEventListener('message', (e) => {
-                    if (e.data.type === 'done') {
-                        resolve();
-                    }
-                });
-                worker.addEventListener('error', (e) => {
-                    console.error('Worker error:', e);
-                    resolve();
-                });
-            }));
+    handleWorkerMessage(e) {
+        const { type, data } = e.data;
+        
+        switch (type) {
+            case 'PROGRESS':
+                this.keysTested += data.processed;
+                this.updateProgress();
+                break;
+                
+            case 'RESULT':
+                this.keysTested += data.processed;
+                this.currentTask.results.push(...data.results);
+                this.currentTask.pendingBatches--;
+                this.updateProgress();
+                
+                if (this.currentTask.pendingBatches === 0) {
+                    this.currentTask.resolve(this.currentTask.results);
+                }
+                break;
+                
+            case 'ERROR':
+                this.currentTask.reject(new Error(data.message));
+                break;
         }
-
-        await Promise.all(workerPromises);
-        this.cleanupWorkers();
     }
 
-    handleWorkerMessage(data) {
-        this.keysTested += data.keysTested;
-        this.results.push(...data.results);
-        this.updateSpeed();
+    handleWorkerError(e) {
+        console.error('Worker error:', e);
+        if (this.currentTask) {
+            this.currentTask.reject(new Error('Worker crashed'));
+        }
     }
 
-    cleanupWorkers() {
+    updateProgress() {
+        const elapsed = (performance.now() - this.startTime) / 1000;
+        const keysPerSecond = this.keysTested / elapsed;
+        const progress = (this.keysTested / this.totalKeys) * 100;
+        
+        // Здесь можно обновлять UI с прогрессом
+        console.log(`Progress: ${progress.toFixed(2)}% | Speed: ${keysPerSecond.toFixed(0)} keys/sec`);
+    }
+
+    sortResults(results) {
+        return results.sort((a, b) => b.score - a.score);
+    }
+
+    terminateWorkers() {
         this.workers.forEach(worker => {
             try {
                 worker.terminate();
@@ -405,255 +183,67 @@ class Cracker {
         this.workers = [];
     }
 
-    updateSpeed() {
-        const now = performance.now();
-        const timeElapsed = (now - this.lastUpdateTime) / 1000;
-        if (timeElapsed > 0) {
-            this.keysPerSecond = Math.round(this.keysTested / timeElapsed);
-        }
-        this.lastUpdateTime = now;
-    }
-
-    getProgress() {
-        if (!this.startTime || this.totalKeysToTest === 0) return 0;
-        return Math.min(this.keysTested / this.totalKeysToTest, 1);
-    }
-
-    getTimeRemaining() {
-        if (!this.startTime || this.keysPerSecond === 0) return '-';
-
-        const keysRemaining = this.totalKeysToTest - this.keysTested;
-        const secondsRemaining = keysRemaining / this.keysPerSecond;
-
-        if (secondsRemaining > 3600) {
-            return `${Math.round(secondsRemaining / 3600)} hours`;
-        } else if (secondsRemaining > 60) {
-            return `${Math.round(secondsRemaining / 60)} minutes`;
-        } else {
-            return `${Math.round(secondsRemaining)} seconds`;
-        }
-    }
-
-    getTopResults(count = 10) {
-        return this.results
-            .sort((a, b) => b.score - a.score)
-            .slice(0, count);
-    }
-
     stop() {
-        if (!this.isRunning) return;
-
-        this.isRunning = false;
-        this.cleanupWorkers();
+        if (this.isRunning) {
+            this.terminateWorkers();
+            this.isRunning = false;
+            return true;
+        }
+        return false;
     }
 }
 
+// Интеграция с UI
 document.addEventListener('DOMContentLoaded', () => {
-    const defaultAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const cipher = new VigenereCipher(defaultAlphabet);
-    const analyzer = new CipherAnalyzer(defaultAlphabet);
-    let cracker = new Cracker(defaultAlphabet);
-
-    const elements = {
-        customAlphabet: document.getElementById('custom-alphabet'),
-        resetAlphabet: document.getElementById('reset-alphabet'),
-        plaintext: document.getElementById('plaintext'),
-        encryptKey: document.getElementById('encrypt-key'),
-        encryptBtn: document.getElementById('encrypt-btn'),
-        ciphertextOutput: document.getElementById('ciphertext-output'),
-        ciphertext: document.getElementById('ciphertext'),
-        decryptKey: document.getElementById('decrypt-key'),
-        decryptBtn: document.getElementById('decrypt-btn'),
-        plaintextOutput: document.getElementById('plaintext-output'),
-        ciphertextToCrack: document.getElementById('ciphertext-to-crack'),
-        knownPlaintext: document.getElementById('known-plaintext'),
-        keyLength: document.getElementById('key-length'),
-        keyLengthValue: document.getElementById('key-length-value'),
-        workersCount: document.getElementById('workers-count'),
-        workersCountValue: document.getElementById('workers-count-value'),
-        batchSize: document.getElementById('batch-size'),
-        batchSizeValue: document.getElementById('batch-size-value'),
-        crackMethod: document.getElementById('crack-method'),
-        crackBtn: document.getElementById('crack-btn'),
-        stopBtn: document.getElementById('stop-btn'),
-        progressBar: document.getElementById('progress-bar'),
-        status: document.getElementById('status'),
-        activeWorkers: document.getElementById('active-workers'),
-        totalWorkers: document.getElementById('total-workers'),
-        keysTested: document.getElementById('keys-tested'),
-        keysPerSecond: document.getElementById('keys-per-second'),
-        timeRemaining: document.getElementById('time-remaining'),
-        resultsContainer: document.getElementById('results-container'),
-        scoringMethod: document.getElementById('scoring-method'),
-        caseSensitive: document.getElementById('case-sensitive'),
-        preserveSpaces: document.getElementById('preserve-spaces'),
-        preservePunctuation: document.getElementById('preserve-punctuation'),
-        resetSettings: document.getElementById('reset-settings')
-    };
-
-    elements.resetAlphabet.addEventListener('click', () => {
-        elements.customAlphabet.value = defaultAlphabet;
-        updateAlphabet();
-    });
-
-    elements.encryptBtn.addEventListener('click', encryptText);
-    elements.decryptBtn.addEventListener('click', decryptText);
-    elements.crackBtn.addEventListener('click', startCracking);
-    elements.stopBtn.addEventListener('click', stopCracking);
-    elements.resetSettings.addEventListener('click', resetSettings);
-
-    elements.keyLength.addEventListener('input', () => {
-        elements.keyLengthValue.textContent = elements.keyLength.value;
-    });
-
-    elements.workersCount.addEventListener('input', () => {
-        elements.workersCountValue.textContent = elements.workersCount.value;
-    });
-
-    elements.batchSize.addEventListener('input', () => {
-        elements.batchSizeValue.textContent = elements.batchSize.value;
-    });
-
-    elements.customAlphabet.addEventListener('change', updateAlphabet);
-
-    function updateAlphabet() {
+    const cracker = new VigenereCracker();
+    const startBtn = document.getElementById('crack-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    
+    startBtn.addEventListener('click', async () => {
         try {
-            const newAlphabet = elements.customAlphabet.value.toUpperCase();
-            cipher.setAlphabet(newAlphabet);
-            analyzer.setAlphabet(newAlphabet);
-            cracker = new Cracker(newAlphabet);
-            showMessage('Alphabet updated successfully', 'success');
-        } catch (error) {
-            showMessage(`Error: ${error.message}`, 'error');
-        }
-    }
-
-    function encryptText() {
-        try {
-            const plaintext = elements.plaintext.value;
-            const key = elements.encryptKey.value;
-            const preserveCase = elements.caseSensitive.checked;
-            const preserveNonAlphabetic = elements.preservePunctuation.checked || elements.preserveSpaces.checked;
-            
-            if (!plaintext || !key) {
-                throw new Error('Plaintext and key are required');
-            }
-            
-            const ciphertext = cipher.encrypt(plaintext, key, preserveCase, preserveNonAlphabetic);
-            elements.ciphertextOutput.value = ciphertext;
-            showMessage('Text encrypted successfully', 'success');
-        } catch (error) {
-            showMessage(`Error: ${error.message}`, 'error');
-        }
-    }
-
-    function decryptText() {
-        try {
-            const ciphertext = elements.ciphertext.value;
-            const key = elements.decryptKey.value;
-            const preserveCase = elements.caseSensitive.checked;
-            const preserveNonAlphabetic = elements.preservePunctuation.checked || elements.preserveSpaces.checked;
-            
-            if (!ciphertext || !key) {
-                throw new Error('Ciphertext and key are required');
-            }
-            
-            const plaintext = cipher.decrypt(ciphertext, key, preserveCase, preserveNonAlphabetic);
-            elements.plaintextOutput.value = plaintext;
-            showMessage('Text decrypted successfully', 'success');
-        } catch (error) {
-            showMessage(`Error: ${error.message}`, 'error');
-        }
-    }
-
-    async function startCracking() {
-        try {
-            const ciphertext = elements.ciphertextToCrack.value;
-            if (!ciphertext) {
-                throw new Error('Ciphertext is required');
-            }
-
-            elements.crackBtn.disabled = true;
-            elements.stopBtn.disabled = false;
-            elements.status.textContent = 'Running';
-            elements.totalWorkers.textContent = elements.workersCount.value;
-            elements.activeWorkers.textContent = '0';
-            elements.keysTested.textContent = '0';
-            elements.keysPerSecond.textContent = '0';
-            elements.timeRemaining.textContent = '-';
-            elements.progressBar.style.width = '0%';
-            elements.resultsContainer.innerHTML = '';
-
+            const ciphertext = document.getElementById('ciphertext-to-crack').value;
             const options = {
-                maxKeyLength: parseInt(elements.keyLength.value),
-                workersCount: parseInt(elements.workersCount.value),
-                batchSize: parseInt(elements.batchSize.value),
-                method: elements.crackMethod.value,
-                knownPlaintext: elements.knownPlaintext.value,
-                scoringMethod: elements.scoringMethod.value
+                maxKeyLength: parseInt(document.getElementById('key-length').value),
+                workersCount: parseInt(document.getElementById('workers-count').value),
+                batchSize: parseInt(document.getElementById('batch-size').value),
+                knownPlaintext: document.getElementById('known-plaintext').value,
+                scoringMethod: document.getElementById('scoring-method').value
             };
-
-            await cracker.crack(ciphertext, options);
-
-            displayResults(cracker.getTopResults(10));
-            showMessage('Cracking completed', 'success');
+            
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            
+            const results = await cracker.crack(ciphertext, options);
+            displayResults(results);
+            
         } catch (error) {
-            showMessage(`Error: ${error.message}`, 'error');
+            console.error('Cracking failed:', error);
+            alert(`Error: ${error.message}`);
         } finally {
-            elements.crackBtn.disabled = false;
-            elements.stopBtn.disabled = true;
-            elements.status.textContent = 'Ready';
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
         }
-    }
-
-    function stopCracking() {
-        cracker.stop();
-        elements.status.textContent = 'Stopped';
-        elements.crackBtn.disabled = false;
-        elements.stopBtn.disabled = true;
-        showMessage('Cracking stopped', 'info');
-    }
-
+    });
+    
+    stopBtn.addEventListener('click', () => {
+        if (cracker.stop()) {
+            console.log('Cracking stopped');
+        }
+    });
+    
     function displayResults(results) {
-        elements.resultsContainer.innerHTML = '';
+        const container = document.getElementById('results-container');
+        container.innerHTML = '';
         
-        if (results.length === 0) {
-            elements.resultsContainer.innerHTML = '<p>No results found. Try different settings.</p>';
-            return;
-        }
-        
-        results.forEach((result, index) => {
-            const resultElement = document.createElement('div');
-            resultElement.className = 'result-item';
-            resultElement.innerHTML = `
-                <h4>Result ${index + 1}</h4>
-                <p>Key: <span class="key">${result.key}</span> <span class="score">Score: ${result.score.toFixed(2)}</span></p>
+        results.slice(0, 10).forEach((result, i) => {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.innerHTML = `
+                <h4>Result ${i + 1}</h4>
+                <p>Key: <strong>${result.key}</strong> (Score: ${result.score.toFixed(2)})</p>
                 <div class="plaintext">${result.plaintext}</div>
             `;
-            elements.resultsContainer.appendChild(resultElement);
+            container.appendChild(div);
         });
     }
-
-    function resetSettings() {
-        elements.scoringMethod.value = 'quadgrams';
-        elements.caseSensitive.checked = true;
-        elements.preserveSpaces.checked = true;
-        elements.preservePunctuation.checked = true;
-        showMessage('Settings reset to defaults', 'info');
-    }
-
-    function showMessage(message, type) {
-        console.log(`${type}: ${message}`);
-    }
-
-    setInterval(() => {
-        if (cracker.isRunning) {
-            const progress = cracker.getProgress() * 100;
-            elements.progressBar.style.width = `${progress}%`;
-            elements.activeWorkers.textContent = cracker.workers.length;
-            elements.keysTested.textContent = cracker.keysTested.toLocaleString();
-            elements.keysPerSecond.textContent = cracker.keysPerSecond.toLocaleString();
-            elements.timeRemaining.textContent = cracker.getTimeRemaining();
-        }
-    }, 500);
 });
