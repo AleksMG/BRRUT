@@ -1,10 +1,5 @@
-// Import the VigenereCipher and CipherAnalyzer classes (simplified for worker)
-class VigenereCipher {
-    constructor(alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
-        this.setAlphabet(alphabet);
-    }
-
-    setAlphabet(alphabet) {
+class WorkerVigenere {
+    constructor(alphabet) {
         this.alphabet = alphabet.toUpperCase();
         this.alphabetMap = {};
         for (let i = 0; i < this.alphabet.length; i++) {
@@ -12,7 +7,7 @@ class VigenereCipher {
         }
     }
 
-    decrypt(ciphertext, key, preserveCase = true, preserveNonAlphabetic = true) {
+    decrypt(ciphertext, key) {
         let result = '';
         const keyUpper = key.toUpperCase();
         let keyIndex = 0;
@@ -24,17 +19,15 @@ class VigenereCipher {
             if (this.alphabetMap[upperChar] !== undefined) {
                 const textPos = this.alphabetMap[upperChar];
                 const keyPos = this.alphabetMap[keyUpper[keyIndex % keyUpper.length]];
-                let newPos = (textPos - keyPos + this.alphabet.length) % this.alphabet.length;
+                const newPos = (textPos - keyPos + this.alphabet.length) % this.alphabet.length;
                 let newChar = this.alphabet[newPos];
-                if (preserveCase && char === char.toLowerCase()) {
+                if (char === char.toLowerCase()) {
                     newChar = newChar.toLowerCase();
                 }
                 result += newChar;
                 keyIndex++;
             } else {
-                if (preserveNonAlphabetic) {
-                    result += char;
-                }
+                result += char;
             }
         }
 
@@ -42,18 +35,8 @@ class VigenereCipher {
     }
 }
 
-class CipherAnalyzer {
-    constructor(alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
-        this.setAlphabet(alphabet);
-        this.loadQuadgrams();
-    }
-
-    setAlphabet(alphabet) {
-        this.alphabet = alphabet.toUpperCase();
-    }
-
-    loadQuadgrams() {
-        // Simplified quadgram frequencies
+class WorkerAnalyzer {
+    constructor() {
         this.quadgrams = {
             'TION': 0.0314, 'THER': 0.0267, 'NTHE': 0.0263, 'THAT': 0.0253,
             'OFTH': 0.0246, 'FTHE': 0.0244, 'THES': 0.0234, 'WITH': 0.0232,
@@ -63,140 +46,69 @@ class CipherAnalyzer {
         };
     }
 
-    scoreText(text, method = 'quadgrams') {
+    score(text, method) {
         text = text.toUpperCase().replace(/[^A-Z]/g, '');
         if (text.length < 4) return -Infinity;
 
         let score = 0;
-        const n = text.length;
-
-        if (method === 'quadgrams') {
-            for (let i = 0; i < n - 3; i++) {
-                const quadgram = text.substr(i, 4);
-                score += Math.log10(this.quadgrams[quadgram] || 1e-10);
-            }
-            return score;
-        } else if (method === 'ic') {
-            return this.indexOfCoincidence(text);
-        } else if (method === 'chi2') {
-            return this.chiSquared(text);
+        for (let i = 0; i < text.length - 3; i++) {
+            const quadgram = text.substr(i, 4);
+            score += Math.log10(this.quadgrams[quadgram] || 1e-10);
         }
-
         return score;
     }
 
-    indexOfCoincidence(text) {
-        const freq = {};
-        let count = 0;
-        
-        for (const char of text) {
-            freq[char] = (freq[char] || 0) + 1;
-            count++;
-        }
-        
-        if (count < 2) return 0;
-        
-        let sum = 0;
-        for (const char in freq) {
-            sum += freq[char] * (freq[char] - 1);
-        }
-        
-        return sum / (count * (count - 1));
-    }
-
-    chiSquared(text) {
-        const englishFreq = {
-            'A': 8.167, 'B': 1.492, 'C': 2.782, 'D': 4.253, 'E': 12.702,
-            'F': 2.228, 'G': 2.015, 'H': 6.094, 'I': 6.966, 'J': 0.153,
-            'K': 0.772, 'L': 4.025, 'M': 2.406, 'N': 6.749, 'O': 7.507,
-            'P': 1.929, 'Q': 0.095, 'R': 5.987, 'S': 6.327, 'T': 9.056,
-            'U': 2.758, 'V': 0.978, 'W': 2.360, 'X': 0.150, 'Y': 1.974, 'Z': 0.074
-        };
-        
-        const freq = {};
-        let count = 0;
-        
-        for (const char of text.toUpperCase()) {
-            if (englishFreq[char]) {
-                freq[char] = (freq[char] || 0) + 1;
-                count++;
-            }
-        }
-        
-        if (count === 0) return Infinity;
-        
-        let chi2 = 0;
-        for (const char in englishFreq) {
-            const expected = englishFreq[char] / 100 * count;
-            const observed = freq[char] || 0;
-            chi2 += Math.pow(observed - expected, 2) / expected;
-        }
-        
-        return chi2;
-    }
-
-    matchesKnownPlaintext(decrypted, known) {
-        if (!known) return true;
-        return decrypted.toUpperCase().includes(known.toUpperCase());
+    matchesKnown(text, known) {
+        return !known || text.toUpperCase().includes(known.toUpperCase());
     }
 }
 
-// Worker message handler
-self.onmessage = function(event) {
-    const { type } = event.data;
-    
-    if (type === 'start') {
-        const {
-            ciphertext,
-            keyBatches,
-            alphabet,
-            method,
-            knownPlaintext,
-            scoringMethod
-        } = event.data;
+self.onmessage = function(e) {
+    if (e.data.type !== 'start') return;
 
-        const cipher = new VigenereCipher(alphabet);
-        const analyzer = new CipherAnalyzer(alphabet);
-        const results = [];
-        let keysTested = 0;
+    const { ciphertext, keyBatches, alphabet, knownPlaintext, scoringMethod } = e.data;
+    const cipher = new WorkerVigenere(alphabet);
+    const analyzer = new WorkerAnalyzer();
+    const results = [];
+    let keysTested = 0;
 
+    try {
         for (const batch of keyBatches) {
+            const batchResults = [];
+            
             for (const key of batch) {
                 try {
-                    const decrypted = cipher.decrypt(ciphertext, key, true, true);
+                    const decrypted = cipher.decrypt(ciphertext, key);
                     
-                    // Skip if known plaintext doesn't match
-                    if (!analyzer.matchesKnownPlaintext(decrypted, knownPlaintext)) {
+                    if (!analyzer.matchesKnown(decrypted, knownPlaintext)) {
                         keysTested++;
                         continue;
                     }
                     
-                    const score = analyzer.scoreText(decrypted, scoringMethod);
+                    const score = analyzer.score(decrypted, scoringMethod);
                     
                     if (score > -Infinity) {
-                        results.push({
+                        batchResults.push({
                             key,
                             plaintext: decrypted,
                             score
                         });
                     }
-                    
+                } catch (err) {
+                    console.error(`Key ${key} failed:`, err);
+                } finally {
                     keysTested++;
-                } catch (error) {
-                    console.error(`Error processing key ${key}:`, error);
                 }
             }
 
-            // Send intermediate results
             self.postMessage({
                 keysTested,
-                results
+                results: batchResults
             });
         }
-
-        // Signal completion
-        self.postMessage({
-            type: 'done'
-        });
+    } catch (err) {
+        console.error('Worker fatal error:', err);
+    } finally {
+        self.postMessage({ type: 'done' });
     }
 };
